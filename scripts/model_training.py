@@ -75,5 +75,28 @@ def run_model_training(processed_data_path='data/processed/adj_close.csv',
     lstm_model.save(model_save_path)
     print(f"Trained LSTM model saved to {model_save_path}")
 
+    # --- Generate Future Forecasts (12 Months) ---
+    print("\nGenerating Future Forecasts...")
+
+    last_sequence = full_scaled_data[-sequence_length:]
+    future_predictions_scaled = []
+    current_batch = last_sequence.reshape((1, sequence_length, 1))
+
+    for i in range(future_forecast_days):
+        next_day_prediction = lstm_model.predict(current_batch, verbose=0)[0]
+        future_predictions_scaled.append(next_day_prediction)
+        current_batch = np.append(current_batch[:, 1:, :], [[next_day_prediction]], axis=1)
+
+    future_forecast_prices = scaler.inverse_transform(np.array(future_predictions_scaled).reshape(-1, 1))
+
+    last_known_date = tsla_data.index[-1]
+    future_dates = pd.date_range(start=last_known_date + pd.Timedelta(days=1), periods=future_forecast_days, freq='B')
+
+    future_forecast_series = pd.Series(future_forecast_prices.flatten(), index=future_dates[:len(future_forecast_prices)], name=target_ticker)
+    
+    future_forecast_series.to_csv(forecast_output_path, header=True) # Save with header
+    print(f"Future forecast saved to {forecast_output_path}")
+    print("\nModel Training and Forecasting Complete.")
+
 if __name__ == "__main__":
     run_model_training()
