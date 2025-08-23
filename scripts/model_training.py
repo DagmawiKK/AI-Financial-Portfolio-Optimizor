@@ -61,5 +61,19 @@ def run_model_training(processed_data_path='data/processed/adj_close.csv',
 
     lstm_model.compile(optimizer='adam', loss='mean_squared_error')
 
+    # Train the LSTM model on the full available dataset
+    early_stopping = EarlyStopping(monitor='loss', patience=10, restore_best_weights=True)
+
+    print("Training LSTM model on full historical data...")
+    history = lstm_model.fit(X_full, y_full,
+                             epochs=100,
+                             batch_size=32,
+                             callbacks=[early_stopping],
+                             verbose=0) # Set verbose to 1 for training progress
+
+    print("\nLSTM Model Training Complete.")
+    lstm_model.save(model_save_path)
+    print(f"Trained LSTM model saved to {model_save_path}")
+
 if __name__ == "__main__":
     run_model_training()
