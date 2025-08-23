@@ -1,11 +1,12 @@
 # Time Series Forecasting for Portfolio Management Optimization
 
-End‑to‑end workflow to (1) preprocess and explore market data, (2) develop and compare forecasting models (ARIMA vs. LSTM), (3) produce a 12‑month TSLA forecast, and (4) construct an optimized portfolio informed by the forecast.
+End‑to‑end workflow to (1) preprocess and explore market data, (2) develop and compare forecasting models (ARIMA vs. LSTM), (3) produce a 12‑month TSLA forecast, (4) construct an optimized portfolio informed by the forecast, and (5) backtest the strategy against a benchmark.
 
 - Task 1: Data Preprocessing and Exploration
 - Task 2: Develop Time Series Forecasting Models (ARIMA vs. LSTM) and model selection
 - Task 3: Forecast Future Market Trends (12‑month TSLA outlook)
 - Task 4: Optimize Portfolio Based on Forecast (Efficient Frontier, key portfolios, recommendation)
+- Task 5: Strategy Backtesting (compare optimized strategy vs 60/40 benchmark)
 
 ---
 
@@ -18,20 +19,26 @@ financial_portfolio_optimization/
 │  │  └─ financial_data.csv                  # Raw yfinance data (Task 1 input)
 │  ├─ processed/
 │  │  ├─ adj_close.csv                       # Clean Adjusted Close (Task 1 output → Tasks 2/4 input)
-│  │  └─ tsla_12month_forecast.csv           # 12‑month TSLA forecast (Task 3 output → Task 4 input)
+│  │  └─ tsla_12month_forecast.csv           # 12‑month TSLA forecast (Task 3 output → Task 4/5 input)
 │  └─ interim/
 ├─ models/
 │  └─ lstm_tsla_forecast_model.keras         # Trained LSTM (Tasks 2/3 output)
 ├─ notebooks/
 │  ├─ EDA_and_Preprocessing.ipynb            # Task 1 details & plots
 │  ├─ Forecasting_Models.ipynb               # Tasks 2/3 modeling, evaluation & forecast
-│  └─ Portfolio_Optimization.ipynb           # Task 4 optimization & figures
+│  ├─ Portfolio_Optimization.ipynb           # Task 4 optimization & figures
+│  └─ Backtesting.ipynb                      # Task 5 backtest analysis & plots
 ├─ scripts/
 │  ├─ data_ingestion.py                      # Task 1: fetch & clean data
 │  ├─ model_training.py                      # Tasks 2/3: ARIMA & LSTM + forecast
-│  └─ portfolio_analysis.py                  # Task 4: MPT simulation & outputs
+│  └─ portfolio_analysis.py                  # Tasks 4/5: MPT optimization + backtesting
 ├─ reports/
-│  └─ figures/                               # EDA, model, and optimization charts
+│  └─ figures/                               # EDA, model, optimization, and backtesting charts
+│     ├─ tsla_test_forecast_vs_actual.png
+│     ├─ tsla_future_forecast_12m.png
+│     ├─ efficient_frontier_simulated.png
+│     ├─ efficient_frontier_highlighted.png
+│     └─ backtest_cumulative_returns.png
 ├─ README.md
 └─ requirements.txt
 ```
@@ -43,7 +50,7 @@ financial_portfolio_optimization/
 - Python 3.8+
 - Install dependencies:
   ```
-  pip install pandas numpy matplotlib seaborn scikit-learn yfinance statsmodels tensorflow
+  pip install pandas numpy matplotlib seaborn scikit-learn yfinance statsmodels tensorflow scipy
   ```
   or
   ```
@@ -74,20 +81,23 @@ financial_portfolio_optimization/
   - reports/figures/tsla_test_forecast_vs_actual.png
   - reports/figures/tsla_future_forecast_12m.png
 
-3) Task 4 — Portfolio optimization
+3) Tasks 4 & 5 — Portfolio optimization and backtesting
 - From project root:
   ```
   python scripts/portfolio_analysis.py
   ```
 - Outputs:
-  - Console summary of key portfolios and recommended weights
-  - Efficient Frontier plots saved under reports/figures/
+  - Console summary of optimization results and backtest performance
+  - reports/figures/efficient_frontier_simulated.png
+  - reports/figures/efficient_frontier_highlighted.png
+  - reports/figures/backtest_cumulative_returns.png
 
 4) Optional notebooks (interactive reproduction)
 ```
 jupyter notebook notebooks/EDA_and_Preprocessing.ipynb
 jupyter notebook notebooks/Forecasting_Models.ipynb
 jupyter notebook notebooks/Portfolio_Optimization.ipynb
+jupyter notebook notebooks/Backtesting.ipynb
 ```
 
 ---
@@ -200,8 +210,42 @@ Recommendation
 - Adopt the Maximum Sharpe Ratio Portfolio for efficient risk‑adjusted growth, primarily allocating to SPY with a small BND position and excluding TSLA given the bearish forecast.
 
 Artifacts
-- Console/CSV summary of portfolio stats (if implemented).
 - Efficient Frontier figures in reports/figures/.
+
+---
+
+## Task 5 — Strategy Backtesting
+
+Objective
+- Validate the optimized strategy by simulating its performance over a recent historical window and comparing it to a simple benchmark.
+
+Methodology
+- Backtesting period: 2024‑08‑01 to 2025‑07‑31.
+- Benchmark: Static 60% SPY / 40% BND portfolio.
+- Strategy simulated: Maximum Sharpe Ratio Portfolio from Task 4
+  - Weights: TSLA 0.0000, BND 0.0429, SPY 0.9571.
+  - Assumption: Buy‑and‑hold (no rebalancing during the backtest).
+- Evaluation:
+  - Cumulative returns curves for strategy vs benchmark.
+  - Final total returns and annualized Sharpe Ratios.
+
+Key Findings
+- Cumulative returns (backtest window):
+  - Optimized Strategy: 17.69%
+  - Benchmark (60/40): 12.47%
+  - Observation: Strategy generally outperformed the benchmark through the period.
+- Sharpe Ratios (annualized):
+  - Optimized Strategy: 0.9497
+  - Benchmark: 1.0210
+  - Interpretation: Higher absolute return with slightly lower risk‑adjusted performance.
+
+Conclusion
+- The model‑driven approach showed higher absolute returns vs the benchmark in this window, consistent with a heavy SPY allocation and zero TSLA exposure given the bearish forecast.
+- Slightly lower Sharpe suggests room to improve risk‑adjusted performance (e.g., dynamic rebalancing, position limits, volatility targeting).
+
+Artifacts
+- reports/figures/backtest_cumulative_returns.png
+- Console summary from portfolio_analysis.py
 
 ---
 
@@ -211,5 +255,6 @@ Artifacts
 - Annualization assumes 252 trading days; Sharpe uses rf = 0%.
 - EarlyStopping and random seeds introduce minor run‑to‑run variance; set seeds for stricter reproducibility.
 - yfinance data can be revised; minor differences may appear across runs.
+- Backtest assumes no rebalancing, no transaction costs, and perfect execution.
 
 ---
