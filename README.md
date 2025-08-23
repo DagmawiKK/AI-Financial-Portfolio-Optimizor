@@ -1,45 +1,47 @@
 # Time Series Forecasting for Portfolio Management Optimization
 
-This repository implements a two-stage workflow for data-driven portfolio management:
-- Task 1: Data Preprocessing and Exploration
-- Task 2: Time Series Forecasting Models (ARIMA vs. LSTM) and 12‑month TSLA forecast
+A three-stage pipeline to: (1) prepare and understand market data, (2) develop and compare forecasting models (ARIMA vs. LSTM), and (3) produce a 12‑month Tesla (TSLA) price forecast for downstream portfolio decisions.
 
-The outputs from Task 1 feed Task 2, and Task 2’s best model forecast will be used by subsequent portfolio construction and optimization.
+- Task 1: Data Preprocessing and Exploration
+- Task 2: Time Series Forecasting Models (ARIMA vs. LSTM) and model selection
+- Task 3: Forecast Future Market Trends (12‑month TSLA forecast using the best model)
 
 ---
 
-## Project Structure
+## Project Structure (key paths)
 
 ```
 financial_portfolio_optimization/
-├── data/
-│   ├── raw/
-│   │   └── financial_data.csv                 # Raw data from yfinance
-│   ├── processed/
-│   │   ├── adj_close.csv                      # Cleaned Adjusted Close prices (Task 1)
-│   │   └── tsla_12month_forecast.csv          # 12-month TSLA forecast (Task 2)
-│   └── interim/
-├── notebooks/
-│   ├── EDA_and_Preprocessing.ipynb            # Detailed Task 1 EDA
-│   └── Forecasting_Models.ipynb               # Task 2 model training & analysis
-├── scripts/
-│   ├── data_ingestion.py                      # Task 1 data fetch & processing
-│   └── model_training.py                      # Task 2 ARIMA & LSTM training/evaluation
-|
-├── reports/
-│   └── figures/
-│       ├── Historical Adj Close prices.jpg           # Historical Adj Close (Task 1)
-│       ├── distribution of daily returns.jpg                         # Returns distributions (Task 1)
-│       ├── 30 day rolling standard deviation.jpg                         # Rolling mean & volatility (Task 1)
-│       ├── tsla_test_forecast_vs_actual.png   # ARIMA/LSTM vs actuals on test set (Task 2)
-│       └── tsla_future_forecast_12m.png       # 12‑month TSLA forecast (Task 2)
-├── README.md
-└── requirements.txt
+├─ data/
+│  ├─ raw/
+│  │  └─ financial_data.csv                 # Raw yfinance dump
+│  ├─ processed/
+│  │  ├─ adj_close.csv                      # Clean Adjusted Close (Task 1)
+│  │  └─ tsla_12month_forecast.csv          # 12‑month TSLA forecast (Tasks 2/3)
+│  └─ interim/
+├─ notebooks/
+│  ├─ EDA_and_Preprocessing.ipynb           # Task 1 details & plots
+|  ├─ Forecast_future_market_trends.ipynb   # task 3
+│  └─ Forecasting_Models.ipynb              # Tasks 2/3 modeling & analysis
+├─ scripts/
+│  ├─ data_ingestion.py                     # Task 1 core script
+│  └─ model_training.py                     # Tasks 2/3 ARIMA & LSTM + forecasting
+├─ models/
+│  └─ lstm_tsla_forecast_model.keras        # Saved LSTM (best model)
+├─ reports/
+│  └─ figures/
+│     ├─ image1.jpg                         # Historical Adj Close (Task 1)
+│     ├─ image2.jpg                         # Returns distributions (Task 1)
+│     ├─ image3.jpg                         # Rolling mean & volatility (Task 1)
+│     ├─ tsla_test_forecast_vs_actual.png   # Test-set comparison (Task 2)
+│     └─ tsla_future_forecast_12m.png       # 12‑month forecast (Task 3)
+├─ README.md
+└─ requirements.txt
 ```
 
 ---
 
-## Environment and Requirements
+## Environment
 
 - Python 3.8+
 - Install dependencies:
@@ -61,19 +63,24 @@ financial_portfolio_optimization/
   - data/raw/financial_data.csv
   - data/processed/adj_close.csv
 
-2) Task 2 — Model training, evaluation, and forecasting
+2) Tasks 2 & 3 — Model training, evaluation, and 12‑month forecast
 - From the project root:
   ```
   python scripts/model_training.py
   ```
+- What it does:
+  - Loads adj_close.csv.
+  - Trains and evaluates ARIMA and LSTM on TSLA (time-based split).
+  - Selects best model by MAE, RMSE, MAPE.
+  - Retrains best model (LSTM) on full history and generates a 12‑month forecast (~252 trading days).
 - Outputs:
   - models/lstm_tsla_forecast_model.keras
   - data/processed/tsla_12month_forecast.csv
   - reports/figures/tsla_test_forecast_vs_actual.png
   - reports/figures/tsla_future_forecast_12m.png
 
-3) Optional (reproduce figures and analysis interactively)
-- Open the notebooks and run cells in order:
+3) Optional notebooks
+- Reproduce analysis and figures interactively:
   ```
   jupyter notebook notebooks/EDA_and_Preprocessing.ipynb
   jupyter notebook notebooks/Forecasting_Models.ipynb
@@ -81,137 +88,115 @@ financial_portfolio_optimization/
 
 ---
 
-## Task 1: Data Preprocessing and Exploration (Summary)
-
-Objective
-- Extract, clean, and understand historical financial data for TSLA, BND, and SPY to support forecasting and optimization.
+## Task 1 — Data Preprocessing and Exploration (Summary)
 
 Data
+- Tickers: TSLA (Tesla), BND (Vanguard Total Bond Market ETF), SPY (S&P 500 ETF)
 - Source: yfinance
-- Tickers: TSLA, BND, SPY
-- Period: 2015-07-01 to 2025-07-31
-- Focus: Adjusted Close prices, daily frequency
+- Period: 2015‑07‑01 to 2025‑07‑31
+- Frequency: Daily (trading days)
+- Focus: Adjusted Close prices
 
-Key Steps
-- Cleaned MultiIndex raw structure, extracted Adjusted Close columns.
-- Ensured aligned trading dates and correct dtypes.
-- Verified no missing values in adj_close.csv for the study window.
+Processing
+- Loaded multi-index raw data; extracted and flattened Adjusted Close for each ticker.
+- Aligned trading calendars and validated dtypes.
+- Result: data/processed/adj_close.csv with no missing values in the study window.
 
-Exploratory Findings
+EDA Highlights
 - Price trends:
-  - TSLA: strong growth, especially post‑2020.
-  - SPY: steady upward trend.
-  - BND: stable profile, characteristic of bond exposure.
-- Returns distribution:
-  - TSLA widest dispersion (highest volatility), SPY moderate, BND narrowest.
-- Rolling volatility (30‑day std):
+  - TSLA: pronounced post‑2020 growth.
+  - SPY: steady market-wide uptrend.
+  - BND: stable bond-like behavior.
+- Daily returns distribution:
+  - TSLA widest (highest volatility), SPY moderate, BND narrowest.
+- 30‑day rolling volatility:
   - TSLA highest and most variable; SPY moderate; BND consistently low.
 - Outliers:
-  - All assets show extremes near March 2020; TSLA has most pronounced swings.
+  - Notable extremes around March 2020 (COVID‑19 shock), strongest in TSLA.
 
-Stationarity
-- Prices: non‑stationary (ADF p > 0.05).
-- Daily returns: stationary (ADF p < 0.05).
+Stationarity (ADF)
+- Prices: non‑stationary (p > 0.05).
+- Daily returns: stationary (p < 0.05).
 
-Risk Metrics
-- Daily 95% VaR:
-  - BND: -0.0049
-  - SPY: -0.0172
-  - TSLA: -0.0547
-- Annualized Sharpe (rf = 0%):
-  - BND: 0.3569
-  - SPY: 0.7941
-  - TSLA: 0.7783
+Risk Metrics (daily unless noted)
+- 95% VaR: BND −0.0049, SPY −0.0172, TSLA −0.0547.
+- Sharpe Ratio (annualized, rf = 0%): BND 0.3569, SPY 0.7941, TSLA 0.7783.
 
 ---
 
-## Task 2: Develop Time Series Forecasting Models
+## Task 2 — Model Development and Selection (TSLA)
 
 Objective
-- Build, evaluate, and compare at least two models—ARIMA (classical) and LSTM (deep learning)—for TSLA daily Adjusted Close forecasting, then produce a 12‑month (≈252 trading days) future forecast using the best model.
+- Build, evaluate, and compare a classical ARIMA model and a deep LSTM model for TSLA daily Adjusted Close; select the best by error metrics, then prepare for the 12‑month forecast.
 
 Data Split
-- Train: 2015-07-01 to 2023-12-31
-- Test: 2024-01-01 to 2025-07-31
-- Chronological split with no shuffling.
+- Train: 2015‑07‑01 to 2023‑12‑31
+- Test: 2024‑01‑01 to 2025‑07‑31
 
 Models
 
-1) ARIMA (statsmodels)
-- Specification: ARIMA(5, 1, 0) on price series with first differencing (d=1).
-- Rationale: address non‑stationarity by differencing.
-- Forecasting: generated dynamic predictions over the test window.
+- ARIMA (statsmodels)
+  - Spec: ARIMA(5, 1, 0) on prices (d=1 to address non‑stationarity).
+  - Forecasting: dynamic predictions over the test set.
 
-2) LSTM (TensorFlow/Keras)
-- Scaling: MinMaxScaler to [0, 1] on TSLA prices.
-- Windowing: sequence_length = 60 (use prior 60 days to predict next day).
-- Architecture:
-  - LSTM layer
-  - Dropout
-  - LSTM layer
-  - Dropout
-  - Dense output (1 unit)
-- Training:
-  - Loss: mean_squared_error
-  - Optimizer: adam
-  - EarlyStopping to curb overfitting
-- Multi‑step future forecast:
-  - Retrained on full history (train + test).
-  - Recursive strategy to predict 252 trading days beyond last date.
-- Inverse scaling applied before metric computation and saving outputs.
+- LSTM (TensorFlow/Keras)
+  - Scaling: MinMaxScaler to [0, 1] on prices.
+  - Windowing: sequence_length = 60 (use prior 60 days to predict the next day).
+  - Architecture: LSTM → Dropout → LSTM → Dropout → Dense(1).
+  - Training: loss = MSE, optimizer = Adam, EarlyStopping to mitigate overfitting.
+  - Inference: inverse scaling for metrics and plots.
 
-Evaluation Metrics (Test Set: 2024‑01 to 2025‑07)
-- ARIMA:
-  - MAE: 62.97
-  - RMSE: 77.99
-  - MAPE: 24.08%
-  - Behavior: relatively flat forecast from the last training point; limited ability to capture TSLA’s strong trend and volatility under this specification.
-- LSTM:
-  - MAE: 11.33
-  - RMSE: 15.93
-  - MAPE: 4.00%
-  - Behavior: closely tracks trend and volatility; markedly lower forecast errors.
+Performance (Test: 2024‑01 to 2025‑07)
+- ARIMA: MAE 62.97, RMSE 77.99, MAPE 24.08% (relatively flat bias from last training point).
+- LSTM: MAE 11.33, RMSE 15.93, MAPE 4.00% (captures trend and volatility more effectively).
 
-Key Findings
-- LSTM significantly outperformed ARIMA on all metrics for the test period, reflecting its capacity to learn non‑linear dynamics and long‑range dependencies in TSLA’s price behavior.
-- The chosen LSTM model was retrained on the full historical dataset and used to produce a 12‑month forecast.
+Decision
+- LSTM selected as best-performing model across all evaluation metrics.
 
-12‑Month TSLA Forecast (from last observed price ≈ $314)
-- Direction: pronounced downward trajectory toward ≈ $144 across the 12‑month horizon.
-- Volatility: initially evident, with smoothing over longer horizons.
-- This bearish outlook will be a primary input to the portfolio optimization phase (e.g., tilting allocations, hedging considerations, scenario analysis).
-
-Deliverables (Task 2)
-- models/lstm_tsla_forecast_model.keras — saved Keras model
-- data/processed/tsla_12month_forecast.csv — dates, predicted prices (inverse‑scaled)
-- reports/figures/tsla_test_forecast_vs_actual.png — test window comparison
-- reports/figures/tsla_future_forecast_12m.png — 12‑month projection
-
-Reproducibility Notes
-- Train/test split is time‑based and deterministic.
-- EarlyStopping may cause small run‑to‑run differences unless seeds are fixed.
-- yfinance may revise historical data; re‑runs can yield minor deviations.
+Artifacts
+- Saved model: models/lstm_tsla_forecast_model.keras
+- Figure: reports/figures/tsla_test_forecast_vs_actual.png
 
 ---
 
-## Design Choices and Considerations
+## Task 3 — Forecast Future Market Trends (12‑Month TSLA Outlook)
 
-- Modeling prices vs returns:
-  - ARIMA on differenced prices is simple, but for assets like TSLA with regime shifts, richer models or exogenous signals can help.
-  - LSTM benefits from longer lookbacks and non‑linear mapping but requires careful scaling and validation.
-- Annualization assumptions:
-  - 252 trading days/year.
-  - Sharpe Ratio computed with rf = 0% (can be parameterized later).
-- Risk and performance:
-  - Combine point forecasts with uncertainty estimates and risk metrics for robust portfolio decisions (future work).
+Objective
+- Use the best model (LSTM) to produce a 12‑month TSLA price forecast and assess potential trends and risks.
+
+Methodology
+- Retrained the LSTM on the full history (2015‑07 to 2025‑07) to exploit all information.
+- Employed recursive multi‑step forecasting: each predicted day is appended to the input window to predict the next, iterated for ~252 trading days.
+- Applied inverse scaling to return price‑level forecasts; saved with calendar dates.
+
+Key Findings
+- Trend: Forecast projects a sharp downward trajectory from approximately $314 to about $144 over 12 months.
+- Volatility: Early horizon reflects recent variability; longer horizon smooths—common in recursive forecasts as errors propagate.
+- Implications: Indicates notable downside risk. Could inform hedging or tactical short exposure for high risk‑tolerant investors, with strong caveats on uncertainty and regime sensitivity.
+
+Deliverables
+- data/processed/tsla_12month_forecast.csv
+- reports/figures/tsla_future_forecast_12m.png
+
+---
+
+## Reproducibility and Notes
+
+- Time-based split with no shuffling ensures causality.
+- EarlyStopping and random initializations can introduce minor run‑to‑run variance; set seeds for stricter reproducibility.
+- yfinance may revise historical data; minor differences can occur across runs.
+- Annualization assumes 252 trading days; Sharpe uses rf = 0%.
 
 ---
 
 ## Next Steps
 
-- Uncertainty modeling (prediction intervals via bootstrapping or Monte Carlo with LSTM residuals).
-- Incorporate exogenous variables (macro factors, indices, market sentiment) via SARIMAX or multivariate deep models.
-- Portfolio optimization using forecasted returns/risk (mean‑variance, Black‑Litterman, risk‑parity), plus sensitivity and stress testing.
-- Model risk governance: backtesting over rolling windows, stability and drift monitoring, and scheduled retraining.
+- Add uncertainty estimates (prediction intervals via residual/bootstrapped simulation or quantile approaches).
+- Incorporate exogenous features (macro factors, indices) with SARIMAX or multivariate deep models.
+- Feed forecasts into portfolio optimization (mean‑variance, Black‑Litterman, risk‑parity) with constraints and transaction costs.
 
 ---
+
+## Disclaimer
+
+For research and educational purposes only; not investment advice. Forecasts are uncertain and may be materially wrong, especially over long horizons or regime changes.
